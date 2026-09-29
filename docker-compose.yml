@@ -25,6 +25,7 @@ services:
       LOG_MAX_FILE_SIZE: ${LOG_MAX_FILE_SIZE:-10MB}
       LOG_MAX_HISTORY: ${LOG_MAX_HISTORY:-14}
       LOG_TOTAL_SIZE_CAP: ${LOG_TOTAL_SIZE_CAP:-200MB}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-local}
       SERVER_PORT: 8080
     volumes: [ buggytrip-logs:/app/logs ]
     ports: [ "8080:8080" ]

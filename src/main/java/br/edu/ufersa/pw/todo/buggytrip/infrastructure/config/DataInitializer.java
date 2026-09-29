@@ -3,13 +3,16 @@ package br.edu.ufersa.pw.todo.buggytrip.infrastructure.config;
 import br.edu.ufersa.pw.todo.buggytrip.domain.entities.Usuario;
 import br.edu.ufersa.pw.todo.buggytrip.domain.enuns.EnumUsuario;
 import br.edu.ufersa.pw.todo.buggytrip.domain.repositories.UsuarioRepository;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
+@Profile("local")
 public class DataInitializer {
     private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
 

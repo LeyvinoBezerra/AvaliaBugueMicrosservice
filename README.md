@@ -25,7 +25,7 @@ API REST para cadastro de usuários e avaliação estruturada de experiências c
 
 Java 25 LTS · Spring Boot 4.1.1 · Spring MVC · JPA/Hibernate · PostgreSQL 17 · Flyway · Spring Security/JWT · SpringDoc/OpenAPI · Actuator · Docker/Compose · JUnit 5 · Testcontainers · JaCoCo · **sem Lombok**.
 
-O desenvolvimento local segue a baseline `BuggyTrip_Documentacao_Visao_Projeto_Software_Docker_Windows.docx`. A solução não usa Terraform, Redis/cache ou microserviços.
+O desenvolvimento local segue a baseline `BuggyTrip_Documentacao_Visao_Projeto_Software_Docker_Windows.docx`. A aplicação não mantém IaC neste repositório: a infraestrutura AWS está no Terraform do serviço ECS da Linuxtips. O projeto não usa Redis/cache ou microserviços.
 
 ## Executar
 
@@ -137,6 +137,31 @@ src/main/resources/db/migration/
 
 O modelo preserva as entidades principais do projeto original (`Usuario`, `Avaliacao`, `Pessoa`, `Perfil`, `Bugueiro`, `EnderecoBugueiro`, `UsuarioPerfil`) e fortalece o núcleo de autenticação e avaliação.
 
+## Deploy do banco na AWS
+
+A integração implantável deste projeto está no Terraform do serviço ECS em `linuxtips-containers-ecs-app/terraform` no repositório `descomplicando-ecs`. Ela executa a API Java no serviço ECS existente e um PostgreSQL container em serviço ECS dedicado, na subnet privada da aplicação, com EBS gp3 criptografado, DNS privado e acesso à porta 5432 somente pelo Security Group da API. A documentação desse projeto contém os passos para criar o segredo, criar os repositórios ECR, publicar as duas imagens e aplicar a infraestrutura.
+
+O banco recebe `DB_URL` privado por Cloud Map, e `DB_USERNAME`/`DB_PASSWORD` são injetados do AWS Secrets Manager pelo ECS. Flyway executa as migrations existentes na inicialização da API; o volume não é recriado em deploy normal. Essa topologia inicial tem um único host e não oferece HA multi-AZ; para esse requisito, use Amazon RDS PostgreSQL.
+
+Para verificar que a API implantada está online pelo DNS do ALB, execute `bash scripts/test-buggytrip-online.sh` no repositório `descomplicando-ecs/linuxtips-containers-ecs-app`. O teste chama `/actuator/health` e exige HTTP 200 com status `UP`; o banco continua interno e sem endpoint público.
+
+As contas de demonstração são criadas somente com o perfil Spring `local` (ativado pelo Docker Compose local). Não ative esse perfil na AWS.
+
+### Usar a coleção Postman/Bruno
+
+[Baixar a coleção Postman BuggyTrip](docs/colecao_postman.json). No Postman, selecione **Import → File** e importe esse JSON. A coleção também pode ser importada no Bruno por **Import → Postman Collection**; confira as variáveis após a importação, pois scripts e variáveis de ambiente podem não ser convertidos integralmente.
+
+Selecione/crie um ambiente para a AWS e configure `password` com uma senha segura para o usuário de teste. A coleção usa o DNS do ALB configurado em `baseUrl` e `hostHeader`; atualize ambos se o DNS mudar. As demais variáveis (`email`, `token`, `userId` e `avaliacaoId`) são preenchidas ao executar os requests no Postman. Selecione os requests e rode-os nesta ordem:
+
+1. Em **01 - Disponibilidade e documentação**, execute **Health check**, **OpenAPI JSON** e, se desejar, **Swagger UI**.
+2. Em **02 - Autenticação**, execute **Criar cliente de teste** e depois **Login CLIENTE**. O script gera um e-mail de teste quando `email` está vazio e captura o JWT e o ID do usuário.
+3. Em **03 - Usuários**, execute as operações da própria conta com o JWT do CLIENTE. Execute **Desativar meu usuário** por último, pois a conta deixa de ser utilizável.
+4. Em **04 - Avaliações**, configure `bugueiroId` com o ID de um BUGUEIRO existente antes de criar/atualizar avaliações; o cadastro público cria somente CLIENTE. Execute a exclusão por último.
+5. Para **Login ADMIN** e **Listar usuários - ADMIN**, configure `adminEmail` e `adminPassword` com credenciais administrativas provisionadas. Não há credenciais ADMIN padrão de produção.
+6. Em **05 - Autorização e erros esperados**, confira as respostas 403 esperadas sem JWT e ao tentar listar usuários com CLIENTE.
+
+No Bruno, se os scripts de captura não forem convertidos, copie manualmente do response os valores de `token`, `userId` e `avaliacaoId` para o ambiente. Não compartilhe tokens, senhas ou ambientes com segredos.
+
 ## Segurança
 
 - BCrypt para senhas.
@@ -186,6 +211,7 @@ Os testes de integração exigem Docker Desktop ativo.
 
 ```powershell
 docker compose up -d postgres
+$env:SPRING_PROFILES_ACTIVE="local"
 .\mvnw.cmd spring-boot:run
 ```
 
