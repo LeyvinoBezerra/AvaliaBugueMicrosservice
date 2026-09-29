@@ -2,7 +2,9 @@ package br.edu.ufersa.pw.todo.buggytrip.api.controllers;
 
 import br.edu.ufersa.pw.todo.buggytrip.api.dtos.Auth.LoginResponse;
 import br.edu.ufersa.pw.todo.buggytrip.domain.enuns.EnumUsuario;
+import br.edu.ufersa.pw.todo.buggytrip.domain.repositories.UsuarioRepository;
 import br.edu.ufersa.pw.todo.buggytrip.domain.service.AuthService;
+import br.edu.ufersa.pw.todo.buggytrip.infrastructure.security.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -21,6 +23,10 @@ class AuthControllerTest {
     MockMvc mvc;
     @MockitoBean
     AuthService service;
+    @MockitoBean
+    JwtService jwtService;
+    @MockitoBean
+    UsuarioRepository usuarioRepository;
 
     @Test
     void login() throws Exception {

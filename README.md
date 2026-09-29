@@ -25,7 +25,7 @@ API REST para cadastro de usuários e avaliação estruturada de experiências c
 
 Java 25 LTS · Spring Boot 4.1.1 · Spring MVC · JPA/Hibernate · PostgreSQL 17 · Flyway · Spring Security/JWT · SpringDoc/OpenAPI · Actuator · Docker/Compose · JUnit 5 · Testcontainers · JaCoCo · **sem Lombok**.
 
-O escopo segue a baseline `BuggyTrip_Documentacao_Visao_Projeto_Software_Docker_Windows.docx`: execução local no Windows com Docker Desktop, sem AWS, Terraform, Redis/cache ou microserviços.
+O desenvolvimento local segue a baseline `BuggyTrip_Documentacao_Visao_Projeto_Software_Docker_Windows.docx`. A solução não usa Terraform, Redis/cache ou microserviços.
 
 ## Executar
 
