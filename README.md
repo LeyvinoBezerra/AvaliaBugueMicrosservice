@@ -25,7 +25,7 @@ API REST para cadastro de usuários e avaliação estruturada de experiências c
 
 Java 25 LTS · Spring Boot 4.1.1 · Spring MVC · JPA/Hibernate · PostgreSQL 17 · Flyway · Spring Security/JWT · SpringDoc/OpenAPI · Actuator · Docker/Compose · JUnit 5 · Testcontainers · JaCoCo · **sem Lombok**.
 
-O escopo segue a baseline `BuggyTrip_Documentacao_Visao_Projeto_Software_Docker_Windows.docx`: execução local no Windows com Docker Desktop, sem AWS, Terraform, Redis/cache ou microserviços.
+O desenvolvimento local segue a baseline `BuggyTrip_Documentacao_Visao_Projeto_Software_Docker_Windows.docx`. O CI/CD do GitHub Actions publica os containers na infraestrutura AWS ECS já provisionada; não usa Terraform, Redis/cache ou microserviços.
 
 ## Executar
 
@@ -181,6 +181,10 @@ Os testes incluem:
 Relatório: `target/site/jacoco/index.html`.
 
 Os testes de integração exigem Docker Desktop ativo.
+
+## CI/CD e Gitflow
+
+O GitHub Actions valida branches e PRs, executa `./mvnw verify`, cria os PRs do fluxo Gitflow e publica no ECS após merges em `develop` (ambiente `development`) ou `main` (ambiente `production`). Consulte [docs/CI-CD-GITFLOW.md](docs/CI-CD-GITFLOW.md) para configurar proteção de branches, OIDC, ambientes e variáveis de deploy.
 
 ## Execução local sem container da aplicação
 
