@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: buggytrip
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/buggytrip}
+    username: ${DB_USERNAME:buggytrip}
+    password: ${DB_PASSWORD:buggytrip-local}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    schemas: bt
+    default-schema: bt
+    locations: classpath:db/migration
+  jackson:
+    datatype:
+      datetime:
+        write-dates-as-timestamps: false
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:change-me-local-secret-at-least-32-bytes-123456}
+      expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
+springdoc:
+  api-docs.path: /v3/api-docs
+  swagger-ui.path: /swagger-ui.html
+management:
+  endpoints.web.exposure.include: health,info,metrics
+  endpoint.health.probes.enabled: true
