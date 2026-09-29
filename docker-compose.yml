@@ -21,8 +21,14 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:-buggytrip}
       JWT_SECRET: ${JWT_SECRET:-change-me-local-secret-at-least-32-bytes-123456}
       JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-3600}
+      LOG_FILE: ${LOG_FILE:-/app/logs/buggytrip.log}
+      LOG_MAX_FILE_SIZE: ${LOG_MAX_FILE_SIZE:-10MB}
+      LOG_MAX_HISTORY: ${LOG_MAX_HISTORY:-14}
+      LOG_TOTAL_SIZE_CAP: ${LOG_TOTAL_SIZE_CAP:-200MB}
       SERVER_PORT: 8080
+    volumes: [ buggytrip-logs:/app/logs ]
     ports: [ "8080:8080" ]
     healthcheck: { test: [ "CMD-SHELL","wget -qO- http://127.0.0.1:8080/actuator/health | grep -q UP" ],interval: 10s,timeout: 5s,start_period: 45s,retries: 10 }
 volumes:
   buggytrip-postgres-data:
+  buggytrip-logs:

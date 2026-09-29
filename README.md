@@ -1,5 +1,24 @@
 # BuggyTrip
 
+# Plataforma de Avaliação de Serviços e Produtos
+
+As plataformas de avaliação de serviços e produtos estão no centro da transformação digital. Hoje, o mundo da tecnologia vive uma fase em que a opinião do usuário é o principal motor de confiança.
+
+---
+
+## 🚀 Tendências atuais
+
+- **Inteligência Artificial e Machine Learning**: sistemas que analisam automaticamente avaliações para detectar padrões, sentimentos e até fraudes.
+- **Experiência do Usuário (UX)**: interfaces mais intuitivas, com dashboards que mostram métricas de satisfação em tempo real.
+- **Integração omnichannel**: avaliações vindas de redes sociais, apps e sites são consolidadas em um só painel.
+- **Blockchain**: começa a ser usado para garantir autenticidade das avaliações, evitando manipulações.
+
+---
+
+## 💡 Impacto no mercado
+
+Empresas estão cada vez mais dependentes dessas plataformas para entender o comportamento do consumidor e ajustar seus produtos. Avaliações viraram dados estratégicos, não apenas opiniões.
+
 API REST para cadastro de usuários e avaliação estruturada de experiências com bugueiros.
 
 ## Stack
@@ -104,7 +123,7 @@ A média dos sete critérios é calculada pela aplicação. O banco também impe
 | PUT | `/api/v1/avaliacoes/{id}` | JWT |
 | DELETE | `/api/v1/avaliacoes/{id}` | JWT |
 
-Listagens suportam `page`, `size` e `sort`; avaliações aceitam `bugueiroId`.
+Listagens suportam `page`, `size` e `sort` (por exemplo, `sort=nome,asc` ou `sort=id,desc`); avaliações aceitam `bugueiroId`. Em usuários, campos de ordenação inválidos são substituídos pela ordenação padrão por `id`, evitando erro interno.
 
 ## Banco
 
@@ -180,6 +199,8 @@ O JDK precisa ser Java 25.
 docker compose logs -f app
 docker compose logs -f postgres
 ```
+
+As requisições são registradas com método, rota, status, duração e um `X-Correlation-ID`, também devolvido na resposta. Logs da aplicação ficam no volume Docker `buggytrip-logs`, em `/app/logs/buggytrip.log`, e são rotacionados por tamanho (10 MB), com até 14 arquivos e limite total de 200 MB. Ajuste `LOG_FILE`, `LOG_MAX_FILE_SIZE`, `LOG_MAX_HISTORY` e `LOG_TOTAL_SIZE_CAP` no `.env` para personalizar o armazenamento. O endpoint de métricas do Actuator continua disponível para acompanhar recursos da aplicação.
 
 ### Porta 5432 ocupada
 

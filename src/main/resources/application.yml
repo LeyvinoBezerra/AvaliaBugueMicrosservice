@@ -34,3 +34,23 @@ springdoc:
 management:
   endpoints.web.exposure.include: health,info,metrics
   endpoint.health.probes.enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+logging:
+  file:
+    name: ${LOG_FILE:logs/buggytrip.log}
+  logback:
+    rollingpolicy:
+      max-file-size: ${LOG_MAX_FILE_SIZE:10MB}
+      max-history: ${LOG_MAX_HISTORY:14}
+      total-size-cap: ${LOG_TOTAL_SIZE_CAP:200MB}
+  level:
+    root: INFO
+    br.edu.ufersa.pw.todo.buggytrip: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [correlationId=%X{correlationId:-}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [correlationId=%X{correlationId:-}] %logger{36} - %msg%n"

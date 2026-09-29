@@ -9,6 +9,7 @@ RUN ./mvnw -B clean package -DskipTests
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 RUN groupadd --system --gid 10001 buggytrip && useradd --system --uid 10001 --gid 10001 buggytrip
+RUN mkdir -p /app/logs && chown -R buggytrip:buggytrip /app/logs
 COPY --from=build /workspace/target/buggytrip-*.jar /app/app.jar
 USER 10001:10001
 EXPOSE 8080

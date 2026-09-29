@@ -12,15 +12,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Autenticação")
 public class AuthController {
-    final AuthService service;
+    private final AuthService authService;
 
-    public AuthController(AuthService s) {
-        service = s;
+    public AuthController(AuthService authService) {
+        this.authService = authService;
     }
 
     @PostMapping("/login")
     @Operation(summary = "Autentica usuário e retorna JWT")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest r) {
-        return ResponseEntity.ok(service.login(r));
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+        return ResponseEntity.ok(authService.login(loginRequest));
     }
 }

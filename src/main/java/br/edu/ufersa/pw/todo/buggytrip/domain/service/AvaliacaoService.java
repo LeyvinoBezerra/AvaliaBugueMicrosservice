@@ -6,97 +6,127 @@ import br.edu.ufersa.pw.todo.buggytrip.api.exceptions.*;
 import br.edu.ufersa.pw.todo.buggytrip.domain.entities.*;
 import br.edu.ufersa.pw.todo.buggytrip.domain.enuns.EnumUsuario;
 import br.edu.ufersa.pw.todo.buggytrip.domain.repositories.AvaliacaoRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AvaliacaoService {
-    final AvaliacaoRepository repo;
-    final UsuarioService users;
+    private static final Logger logger = LoggerFactory.getLogger(AvaliacaoService.class);
 
-    public AvaliacaoService(AvaliacaoRepository r, UsuarioService u) {
-        repo = r;
-        users = u;
+    private final AvaliacaoRepository avaliacaoRepository;
+    private final UsuarioService usuarioService;
+
+    public AvaliacaoService(AvaliacaoRepository avaliacaoRepository, UsuarioService usuarioService) {
+        this.avaliacaoRepository = avaliacaoRepository;
+        this.usuarioService = usuarioService;
     }
 
     @Transactional
-    public AvaliacaoResponse criar(AvaliacaoRequest r, Long currentUserId, boolean admin) {
-        if (!admin && !r.avaliadorId().equals(currentUserId))
+    public AvaliacaoResponse criar(
+            AvaliacaoRequest avaliacaoRequest, Long authenticatedUserId, boolean isAdministrator) {
+        if (!isAdministrator && !avaliacaoRequest.avaliadorId().equals(authenticatedUserId))
             throw new br.edu.ufersa.pw.todo.buggytrip.api.exceptions.BusinessRuleException("O avaliador deve ser o usuário autenticado");
-        validar(r);
-        if (repo.existsByAvaliadorIdAndBugueiroId(r.avaliadorId(), r.bugueiroId()))
+        validarParticipantes(avaliacaoRequest);
+        if (avaliacaoRepository.existsByAvaliadorIdAndBugueiroId(
+                avaliacaoRequest.avaliadorId(), avaliacaoRequest.bugueiroId()))
             throw new ConflictException("O avaliador já avaliou este bugueiro");
-        var a = new Avaliacao();
-        copy(r, a);
-        a.setAvaliador(users.get(r.avaliadorId()));
-        a.setBugueiro(users.get(r.bugueiroId()));
-        return out(repo.save(a));
+        var avaliacao = new Avaliacao();
+        copiarDados(avaliacaoRequest, avaliacao);
+        avaliacao.setAvaliador(usuarioService.get(avaliacaoRequest.avaliadorId()));
+        avaliacao.setBugueiro(usuarioService.get(avaliacaoRequest.bugueiroId()));
+        var avaliacaoSalva = avaliacaoRepository.save(avaliacao);
+        logger.info("Review created reviewId={} reviewerId={} buggyDriverId={}",
+                avaliacaoSalva.getId(), avaliacaoRequest.avaliadorId(), avaliacaoRequest.bugueiroId());
+        return toResponse(avaliacaoSalva);
     }
 
     @Transactional
-    public AvaliacaoResponse atualizar(Long id, AvaliacaoRequest r, Long currentUserId, boolean admin) {
-        var a = get(id);
-        if (!admin && !a.getAvaliador().getId().equals(currentUserId))
+    public AvaliacaoResponse atualizar(
+            Long avaliacaoId, AvaliacaoRequest avaliacaoRequest,
+            Long authenticatedUserId, boolean isAdministrator) {
+        var avaliacao = buscarAvaliacaoPorId(avaliacaoId);
+        if (!isAdministrator && !avaliacao.getAvaliador().getId().equals(authenticatedUserId))
             throw new org.springframework.security.access.AccessDeniedException("Somente o avaliador ou ADMIN pode alterar");
-        validar(r);
-        if (!a.getAvaliador().getId().equals(r.avaliadorId()) || !a.getBugueiro().getId().equals(r.bugueiroId()))
-            if (repo.existsByAvaliadorIdAndBugueiroId(r.avaliadorId(), r.bugueiroId()))
+        validarParticipantes(avaliacaoRequest);
+        if (!avaliacao.getAvaliador().getId().equals(avaliacaoRequest.avaliadorId())
+                || !avaliacao.getBugueiro().getId().equals(avaliacaoRequest.bugueiroId()))
+            if (avaliacaoRepository.existsByAvaliadorIdAndBugueiroId(
+                    avaliacaoRequest.avaliadorId(), avaliacaoRequest.bugueiroId()))
                 throw new ConflictException("Já existe avaliação para este par");
-        copy(r, a);
-        a.setAvaliador(users.get(r.avaliadorId()));
-        a.setBugueiro(users.get(r.bugueiroId()));
-        return out(repo.save(a));
+        copiarDados(avaliacaoRequest, avaliacao);
+        avaliacao.setAvaliador(usuarioService.get(avaliacaoRequest.avaliadorId()));
+        avaliacao.setBugueiro(usuarioService.get(avaliacaoRequest.bugueiroId()));
+        var avaliacaoSalva = avaliacaoRepository.save(avaliacao);
+        logger.info("Review updated reviewId={} reviewerId={} buggyDriverId={}",
+                avaliacaoSalva.getId(), avaliacaoRequest.avaliadorId(), avaliacaoRequest.bugueiroId());
+        return toResponse(avaliacaoSalva);
     }
 
     @Transactional
-    public void remover(Long id, Long currentUserId, boolean admin) {
-        var a = get(id);
-        if (!admin && !a.getAvaliador().getId().equals(currentUserId))
+    public void remover(Long avaliacaoId, Long authenticatedUserId, boolean isAdministrator) {
+        var avaliacao = buscarAvaliacaoPorId(avaliacaoId);
+        if (!isAdministrator && !avaliacao.getAvaliador().getId().equals(authenticatedUserId))
             throw new org.springframework.security.access.AccessDeniedException("Somente o avaliador ou ADMIN pode remover");
-        repo.delete(a);
+        avaliacaoRepository.delete(avaliacao);
+        logger.info("Review deleted reviewId={} reviewerId={}", avaliacaoId, avaliacao.getAvaliador().getId());
     }
 
     @Transactional(readOnly = true)
-    public AvaliacaoResponse buscar(Long id) {
-        return out(get(id));
+    public AvaliacaoResponse buscar(Long avaliacaoId) {
+        return toResponse(buscarAvaliacaoPorId(avaliacaoId));
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<AvaliacaoResponse> listar(Long bugueiroId, Pageable p) {
-        var x = (bugueiroId == null ? repo.findAll(p) : repo.findByBugueiroId(bugueiroId, p)).map(this::out);
-        return new PageResponse<>(x.getContent(), x.getNumber(), x.getSize(), x.getTotalElements(), x.getTotalPages(), x.isFirst(), x.isLast());
+    public PageResponse<AvaliacaoResponse> listar(Long bugueiroId, Pageable pageable) {
+        var avaliacoesPage = (bugueiroId == null
+                ? avaliacaoRepository.findAll(pageable)
+                : avaliacaoRepository.findByBugueiroId(bugueiroId, pageable)).map(this::toResponse);
+        return new PageResponse<>(avaliacoesPage.getContent(), avaliacoesPage.getNumber(), avaliacoesPage.getSize(),
+                avaliacoesPage.getTotalElements(), avaliacoesPage.getTotalPages(),
+                avaliacoesPage.isFirst(), avaliacoesPage.isLast());
     }
 
-    private Avaliacao get(Long id) {
-        return repo.findById(id).orElseThrow(() -> new NotFoundException("Avaliação não encontrada: " + id));
+    private Avaliacao buscarAvaliacaoPorId(Long avaliacaoId) {
+        return avaliacaoRepository.findById(avaliacaoId)
+                .orElseThrow(() -> new NotFoundException("Avaliação não encontrada: " + avaliacaoId));
     }
 
-    private void validar(AvaliacaoRequest r) {
-        var a = users.get(r.avaliadorId());
-        var b = users.get(r.bugueiroId());
-        if (a.getId().equals(b.getId()))
+    private void validarParticipantes(AvaliacaoRequest avaliacaoRequest) {
+        var avaliador = usuarioService.get(avaliacaoRequest.avaliadorId());
+        var bugueiro = usuarioService.get(avaliacaoRequest.bugueiroId());
+        if (avaliador.getId().equals(bugueiro.getId()))
             throw new BusinessRuleException("Avaliador e bugueiro devem ser usuários diferentes");
-        if (a.getUsuarioTipo() != EnumUsuario.CLIENTE)
+        if (avaliador.getUsuarioTipo() != EnumUsuario.CLIENTE)
             throw new BusinessRuleException("O avaliador deve possuir tipo CLIENTE");
-        if (b.getUsuarioTipo() != EnumUsuario.BUGUEIRO)
+        if (bugueiro.getUsuarioTipo() != EnumUsuario.BUGUEIRO)
             throw new BusinessRuleException("O avaliado deve possuir tipo BUGUEIRO");
     }
 
-    private void copy(AvaliacaoRequest r, Avaliacao a) {
-        a.setSeguranca(r.seguranca());
-        a.setConhecimentoRoteiro(r.conhecimentoRoteiro());
-        a.setConfortoVeiculo(r.confortoVeiculo());
-        a.setSimpatiaMotorista(r.simpatiaMotorista());
-        a.setExperienciaGeral(r.experienciaGeral());
-        a.setAdaptabilidade(r.adaptabilidade());
-        a.setParadasInteressantes(r.paradasInteressantes());
-        a.setDiferencial(r.diferencial());
-        a.setFeedback(r.feedback());
+    private void copiarDados(AvaliacaoRequest source, Avaliacao target) {
+        target.setSeguranca(source.seguranca());
+        target.setConhecimentoRoteiro(source.conhecimentoRoteiro());
+        target.setConfortoVeiculo(source.confortoVeiculo());
+        target.setSimpatiaMotorista(source.simpatiaMotorista());
+        target.setExperienciaGeral(source.experienciaGeral());
+        target.setAdaptabilidade(source.adaptabilidade());
+        target.setParadasInteressantes(source.paradasInteressantes());
+        target.setDiferencial(source.diferencial());
+        target.setFeedback(source.feedback());
     }
 
-    private AvaliacaoResponse out(Avaliacao a) {
-        double n = (a.getSeguranca() + a.getConhecimentoRoteiro() + a.getConfortoVeiculo() + a.getSimpatiaMotorista() + a.getExperienciaGeral() + a.getAdaptabilidade() + a.getParadasInteressantes()) / 7.0;
-        return new AvaliacaoResponse(a.getId(), a.getSeguranca(), a.getConhecimentoRoteiro(), a.getConfortoVeiculo(), a.getSimpatiaMotorista(), a.getExperienciaGeral(), a.getAdaptabilidade(), a.getParadasInteressantes(), a.getDiferencial(), a.getFeedback(), a.getAvaliador().getId(), a.getBugueiro().getId(), a.getDataCriacao(), a.getDataAtualizacao(), Math.round(n * 100) / 100.0);
+    private AvaliacaoResponse toResponse(Avaliacao avaliacao) {
+        double mediaNotas = (avaliacao.getSeguranca() + avaliacao.getConhecimentoRoteiro()
+                + avaliacao.getConfortoVeiculo() + avaliacao.getSimpatiaMotorista()
+                + avaliacao.getExperienciaGeral() + avaliacao.getAdaptabilidade()
+                + avaliacao.getParadasInteressantes()) / 7.0;
+        return new AvaliacaoResponse(
+                avaliacao.getId(), avaliacao.getSeguranca(), avaliacao.getConhecimentoRoteiro(),
+                avaliacao.getConfortoVeiculo(), avaliacao.getSimpatiaMotorista(), avaliacao.getExperienciaGeral(),
+                avaliacao.getAdaptabilidade(), avaliacao.getParadasInteressantes(), avaliacao.getDiferencial(),
+                avaliacao.getFeedback(), avaliacao.getAvaliador().getId(), avaliacao.getBugueiro().getId(),
+                avaliacao.getDataCriacao(), avaliacao.getDataAtualizacao(), Math.round(mediaNotas * 100) / 100.0);
     }
 }

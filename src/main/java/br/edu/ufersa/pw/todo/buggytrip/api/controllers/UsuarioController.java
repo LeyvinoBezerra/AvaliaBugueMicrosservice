@@ -16,53 +16,66 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/users")
 @Tag(name = "Usuários")
 public class UsuarioController {
-    final UsuarioService service;
+    private final UsuarioService usuarioService;
 
-    public UsuarioController(UsuarioService s) {
-        service = s;
+    public UsuarioController(UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
     }
 
     @PostMapping
-    public ResponseEntity<UsuarioResponse> criar(@Valid @RequestBody UsuarioRequest r) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.criar(r));
+    public ResponseEntity<UsuarioResponse> criar(@Valid @RequestBody UsuarioRequest usuarioRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(usuarioService.criar(usuarioRequest));
     }
 
     @GetMapping("/{id}")
-    public UsuarioResponse buscar(@PathVariable Long id, Authentication a) {
-        selfOrAdmin(id, a);
-        return service.buscar(id);
+    public UsuarioResponse buscar(@PathVariable("id") Long usuarioId, Authentication authentication) {
+        requireOwnerOrAdmin(usuarioId, authentication);
+        return usuarioService.buscar(usuarioId);
     }
 
     @GetMapping
-    public PageResponse<UsuarioResponse> listar(@PageableDefault(size = 20, sort = "id") Pageable p, Authentication a) {
-        admin(a);
-        return service.listar(p);
+    public PageResponse<UsuarioResponse> listar(
+            @PageableDefault(size = 20, sort = "id") Pageable pageable,
+            Authentication authentication) {
+        requireAdministrator(authentication);
+        return usuarioService.listar(pageable);
     }
 
     @PutMapping("/{id}")
-    public UsuarioResponse atualizar(@PathVariable Long id, @Valid @RequestBody UsuarioRequest r, Authentication a) {
-        selfOrAdmin(id, a);
-        if (a.getAuthorities().stream().noneMatch(x -> x.getAuthority().equals("ROLE_ADMIN"))) {
-            var atual = service.get(id);
-            r = new UsuarioRequest(r.nome(), r.email(), r.senha(), atual.getUsuarioTipo());
+    public UsuarioResponse atualizar(
+            @PathVariable("id") Long usuarioId,
+            @Valid @RequestBody UsuarioRequest usuarioRequest,
+            Authentication authentication) {
+        requireOwnerOrAdmin(usuarioId, authentication);
+        if (!isAdministrator(authentication)) {
+            var existingUser = usuarioService.get(usuarioId);
+            usuarioRequest = new UsuarioRequest(
+                    usuarioRequest.nome(), usuarioRequest.email(), usuarioRequest.senha(), existingUser.getUsuarioTipo());
         }
-        return service.atualizar(id, r);
+        return usuarioService.atualizar(usuarioId, usuarioRequest);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void remover(@PathVariable Long id, Authentication a) {
-        selfOrAdmin(id, a);
-        service.remover(id);
+    public void remover(@PathVariable("id") Long usuarioId, Authentication authentication) {
+        requireOwnerOrAdmin(usuarioId, authentication);
+        usuarioService.remover(usuarioId);
     }
 
-    private void admin(Authentication a) {
-        if (a.getAuthorities().stream().noneMatch(x -> x.getAuthority().equals("ROLE_ADMIN")))
+    private void requireAdministrator(Authentication authentication) {
+        if (!isAdministrator(authentication))
             throw new AccessDeniedException("Apenas ADMIN pode listar usuários");
     }
 
-    private void selfOrAdmin(Long id, Authentication a) {
-        if (a.getAuthorities().stream().noneMatch(x -> x.getAuthority().equals("ROLE_ADMIN")) && !String.valueOf(a.getDetails()).equals(String.valueOf(id)))
+    private void requireOwnerOrAdmin(Long usuarioId, Authentication authentication) {
+        if (!isAdministrator(authentication)
+                && !String.valueOf(authentication.getDetails()).equals(String.valueOf(usuarioId))) {
             throw new AccessDeniedException("Acesso negado");
+        }
+    }
+
+    private boolean isAdministrator(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
     }
 }

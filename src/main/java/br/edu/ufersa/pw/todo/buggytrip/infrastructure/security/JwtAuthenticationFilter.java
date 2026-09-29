@@ -4,6 +4,8 @@ import br.edu.ufersa.pw.todo.buggytrip.domain.repositories.UsuarioRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,6 +17,8 @@ import java.util.List;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     final JwtService jwt;
     final UsuarioRepository users;
 
@@ -33,6 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(a);
             });
         } catch (JwtException | IllegalArgumentException ignored) {
+            logger.debug("JWT authentication rejected reason={}", ignored.getClass().getSimpleName());
         }
         chain.doFilter(req, res);
     }

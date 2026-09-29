@@ -3,12 +3,16 @@ package br.edu.ufersa.pw.todo.buggytrip.infrastructure.config;
 import br.edu.ufersa.pw.todo.buggytrip.domain.entities.Usuario;
 import br.edu.ufersa.pw.todo.buggytrip.domain.enuns.EnumUsuario;
 import br.edu.ufersa.pw.todo.buggytrip.domain.repositories.UsuarioRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 public class DataInitializer {
+    private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
+
     @Bean
     CommandLineRunner seed(UsuarioRepository r, PasswordEncoder e) {
         return a -> {
@@ -26,6 +30,7 @@ public class DataInitializer {
         u.setSenha(e.encode(p));
         u.setUsuarioTipo(t);
         u.setAtivo(true);
-        r.save(u);
+        var saved = r.save(u);
+        logger.info("Demo user initialized userId={} role={}", saved.getId(), saved.getUsuarioTipo());
     }
 }
